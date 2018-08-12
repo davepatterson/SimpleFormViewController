@@ -90,7 +90,7 @@ Pod::Spec.new do |s|
   #  Not including the public_header_files will make all headers public.
   #
 
-  s.source_files  = "SimpleFormViewController", "SimpleFormViewController/**/*.{h,m}"
+  s.source_files  = "SimpleFormViewController", "SimpleFormViewController/**/*.swift"
   s.exclude_files = "Classes/Exclude"
 
   s.public_header_files = "SimpleFormViewController/**/*.h"
