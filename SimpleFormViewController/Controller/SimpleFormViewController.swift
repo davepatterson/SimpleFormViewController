@@ -9,6 +9,13 @@
 import UIKit
 
 /**
+ For form Field errors
+ */
+enum FormFieldError: Error {
+    case doesNotExist
+}
+
+/**
  `Constants` represents unchanging values used by `SimpleFormViewController`
  */
 fileprivate enum Constants {
@@ -65,11 +72,11 @@ internal class FormTextField: UITextField, FormField {
     var hasAccessoryRow: Bool = false
     var accessoryRowShowing: Bool = false
     var shouldDisplay: Bool = true
-    
+
     override func textRect(forBounds bounds: CGRect) -> CGRect {
         return bounds.insetBy(dx: Constants.defaultTextInset, dy: 0)
     }
-    
+
     override func editingRect(forBounds bounds: CGRect) -> CGRect {
         return bounds.insetBy(dx: Constants.defaultTextInset, dy: 0)
     }
@@ -84,7 +91,7 @@ internal class FormLabel: UILabel, FormField {
     var hasAccessoryRow: Bool = false
     var accessoryRowShowing: Bool = false
     var shouldDisplay: Bool = true
-    
+
     override func drawText(in rect: CGRect) {
         let insets = UIEdgeInsetsInsetRect(rect, UIEdgeInsets(top: 10, left: Constants.defaultTextInset, bottom: 10, right: 10))
         super.drawText(in: insets)
@@ -102,33 +109,36 @@ internal class FormDatePicker: UIDatePicker, FormField {
     var shouldDisplay: Bool = true
 }
 
+/**
+ Function used to add pretty mask to phone number
+ */
 func format(phoneNumber: String, shouldRemoveLastDigit: Bool = false) -> String {
     guard !phoneNumber.isEmpty else { return "" }
     guard let regex = try? NSRegularExpression(pattern: "[\\s-\\(\\)]", options: .caseInsensitive) else { return "" }
     let r = NSString(string: phoneNumber).range(of: phoneNumber)
     var number = regex.stringByReplacingMatches(in: phoneNumber, options: .init(rawValue: 0), range: r, withTemplate: "")
-    
+
     if number.count > 10 {
         let tenthDigitIndex = number.index(number.startIndex, offsetBy: 10)
         number = String(number[number.startIndex..<tenthDigitIndex])
     }
-    
+
     if shouldRemoveLastDigit {
         let end = number.index(number.startIndex, offsetBy: number.count-1)
         number = String(number[number.startIndex..<end])
     }
-    
+
     if number.count < 7 {
         let end = number.index(number.startIndex, offsetBy: number.count)
         let range = number.startIndex..<end
         number = number.replacingOccurrences(of: "(\\d{3})(\\d+)", with: "($1) $2", options: .regularExpression, range: range)
-        
+
     } else {
         let end = number.index(number.startIndex, offsetBy: number.count)
         let range = number.startIndex..<end
         number = number.replacingOccurrences(of: "(\\d{3})(\\d{3})(\\d+)", with: "($1) $2-$3", options: .regularExpression, range: range)
     }
-    
+
     return number
 }
 
@@ -138,7 +148,7 @@ extension SimpleFormViewController: UITextFieldDelegate {
         resignFirstResponder()
         return true
     }
-    
+    // Applying phone number mask when phone number field is used
     public func textField(_ textField: UITextField, shouldChangeCharactersIn range: NSRange, replacementString string: String) -> Bool {
         if textField.keyboardType == .phonePad {
             var fullString = textField.text ?? ""
@@ -158,26 +168,26 @@ extension SimpleFormViewController: UITableViewDataSource {
     public func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return numberOfFields()
     }
-    
+
     public func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = FormCell(style: .default, reuseIdentifier: Constants.FormCellIdentifier)
         let dict = fields[indexPath.row]
         let field = dict![Array(dict!.keys)[0]]
-        
+
         cell.selectionStyle = .none
         cell.setCell(field!)
         return cell
     }
-    
+
 }
 
 // MARK: - Table view delegate
 extension SimpleFormViewController: UITableViewDelegate {
     public func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
-        
+
         let dict = fields[indexPath.row]
         let field = dict![Array(dict!.keys)[0]] as! FormField
-        
+
         if field is FormTextField {
             if field.shouldDisplay {
                 return 40.0
@@ -191,7 +201,7 @@ extension SimpleFormViewController: UITableViewDelegate {
                 return 40.0
             }
         }
-        
+
         return 0.0
     }
 }
@@ -208,17 +218,29 @@ open class SimpleFormViewController: UIViewController {
     // Delegate that is expected to handle form data
     public weak var delegate: SimpleFormViewControllerDelegate? = nil
     internal var allowEdits: Bool = true
-    
+
     open override func viewDidLoad() {
         super.viewDidLoad()
-        
+
         configureSimpleFormViewController()
     }
 
     open override func didReceiveMemoryWarning() {
         super.didReceiveMemoryWarning()
     }
-    
+
+    func viewAtIndex(_ index: Int) throws -> UIView {
+        if let field = fields[index] {
+            if let key = field.keys.first {
+                if let view = field[key] {
+                    return view
+                }
+            }
+        }
+
+        throw FormFieldError.doesNotExist
+    }
+
     /**
      Method that allows user to disable/enable editing of fields.
      - parameter editable: `Bool` that determines if fields can be edited.
@@ -226,22 +248,30 @@ open class SimpleFormViewController: UIViewController {
     public func toggleEditable() {
         allowEdits = allowEdits ? false : true
         for i in 0..<numberOfFields() {
-            fields[i]![fields[i]!.keys.first!]?.isUserInteractionEnabled = allowEdits
+            do {
+                try viewAtIndex(i).isUserInteractionEnabled = allowEdits
+            } catch let error {
+                fatalError(error.localizedDescription)
+            }
         }
         tableView.reloadData()
         // Make first field first responder to let user know editing is in progress
         if allowEdits {
-            fields[0]![fields[0]!.keys.first!]?.becomeFirstResponder()
+            do {
+                try viewAtIndex(0).becomeFirstResponder()
+            } catch let error {
+                fatalError(error.localizedDescription)
+            }
         }
     }
-    
+
     /**
      Returns number of fields in form.
      */
     public func numberOfFields() -> Int {
         return Array(fields.keys).count
     }
-    
+
     /**
      Configures view controller.
      */
@@ -253,7 +283,7 @@ open class SimpleFormViewController: UIViewController {
         tableView.tableFooterView = UIView()
         view.addSubview(tableView)
     }
-    
+
     /**
      Public method used to register text field to `SimpleFormViewController`.
      - parameter fieldTitle: `TextFieldTitle` of field being registered.
@@ -277,7 +307,7 @@ open class SimpleFormViewController: UIViewController {
             fields[fields.keys.count] = [fieldTitle.rawValue: field]
         }
     }
-    
+
     /**
      Public method used to register text field to `SimpleFormViewController`.
      - parameter fieldTitle: `DateFieldTitle` of field being registered.
@@ -295,7 +325,7 @@ open class SimpleFormViewController: UIViewController {
             label.row = fields.keys.count
             label.hasAccessoryRow = true
             fields[label.row] = [fieldTitle.rawValue: label]
-            
+
             let datePicker = FormDatePicker(frame: CGRect(x: 0, y: 0, width: Constants.defaultRowWidth, height: Constants.defaultDatePickerRowHeight))
             datePicker.addTarget(self, action: #selector(updateDateLabel), for: .valueChanged)
             datePicker.isHidden = true
@@ -305,7 +335,7 @@ open class SimpleFormViewController: UIViewController {
             fields[fields.keys.count] = [fieldTitle.rawValue: datePicker]
         }
     }
-    
+
     /**
      Public method used to set the title of `SimpleFormViewController`
      - parameter titleString: `String` of title text.
@@ -314,11 +344,11 @@ open class SimpleFormViewController: UIViewController {
         guard navigationController != nil else {
             fatalError("You must embed SimpleFormViewController in UINavigationController to set its title.")
         }
-        
+
         // Set title
         navigationItem.title = titleString
     }
-    
+
     /**
      Public method used to set the left button item of `SimpleFormViewController`
      - parameter barButtonItem: Instance to be set to right button.
@@ -327,10 +357,10 @@ open class SimpleFormViewController: UIViewController {
         guard navigationController != nil else {
             fatalError("You must embed SimpleFormViewController in UINavigationController to set its title.")
         }
-        
+
         navigationItem.leftBarButtonItem = barButtonItem
     }
-    
+
     /**
      Public method used to set the right button item of `SimpleFormViewController`
      - parameter barButtonItem: Instance to be set to right button.
@@ -339,14 +369,14 @@ open class SimpleFormViewController: UIViewController {
         guard navigationController != nil else {
             fatalError("You must embed SimpleFormViewController in UINavigationController to set its title.")
         }
-        
+
         navigationItem.rightBarButtonItem = barButtonItem
     }
-    
+
     public func setFooterView(_ view: UIView) {
         tableView.tableFooterView = view
     }
-    
+
     /**
      Private method used to convert UIDate to pretty date.
      - parameter date: `Date` that will be converted to human friendly string.
@@ -355,7 +385,7 @@ open class SimpleFormViewController: UIViewController {
     private func prettyDate(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
-        
+
         let myString = formatter.string(from: date)
         // convert your string to date
         let yourDate = formatter.date(from: myString)
@@ -363,10 +393,10 @@ open class SimpleFormViewController: UIViewController {
         formatter.dateFormat = "MM/dd/yyyy"
         // again convert your date to string
         let myStringafd = formatter.string(from: yourDate!)
-        
+
         return myStringafd
     }
-    
+
     /**
      Used to covert saved date string to `Date` object.
      - parameter string: `String` that will be converted to `Date` object.
@@ -374,12 +404,12 @@ open class SimpleFormViewController: UIViewController {
      */
     private func dateFromString(_ string: String) -> Date {
         let dateFormatter = DateFormatter()
-        
+
         dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss +zzzz"
-        
+
         return dateFormatter.date(from: string)!
     }
-    
+
     /**
      Private method used to update label associated with date picker.
      - parameter datePicker: `FormDatePicker` that is used to toggle date.
@@ -404,26 +434,33 @@ open class SimpleFormViewController: UIViewController {
             (field as! UIView).isHidden = (field as! UIView).isHidden ? false : true
             tableView.reloadRows(at:[IndexPath(row: field.row, section: 0)], with: .automatic)
             tableView.endUpdates()
-            
+
         }
     }
-    
+
     /**
      Method used to submit form data. Sends submitted data to `SwiftFormViewController`.
      */
     public func submitFormData() {
         // Pass dictionary of type (fieldName: fieldValue) (String: String)
         var dict = [String: String]()
-        
+
         for i in 0..<numberOfFields() {
-            if let textField = fields[i]![fields[i]!.keys.first!] as? FormTextField {
+            // Retrieve view at index
+            do {
+                try view = viewAtIndex(i)
+            } catch let error {
+                fatalError(error.localizedDescription)
+            }
+
+            if let textField = view as? FormTextField {
                 dict[fields[i]!.keys.first!] = textField.text!
-            } else if let dateField = fields[i]![fields[i]!.keys.first!] as? FormDatePicker {
+            } else if let dateField = view as? FormDatePicker {
                 let stringDate = "\(dateField.date)"
                 dict[fields[i]!.keys.first!] = stringDate
             }
         }
-        
+
         delegate?.handleFormValues(dict)
     }
 }
