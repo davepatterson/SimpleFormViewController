@@ -24,11 +24,11 @@ Install into your project:
 
 ```bash
 $ pod install
+```
 
 ## Core Concept
 Register a form field (either TextField or DateField) of a certain type (firstName, lastName, dob, phoneNumber, zipCode)
 
-```
 ## Usage
 
 Add framework using `import SimpleFormViewController` in your `.swift` files.
