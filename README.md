@@ -36,7 +36,7 @@ Add framework using `import SimpleFormViewController` in your `.swift` files.
 Make your UIViewController a subclass of `SimpleFormViewController`.
 
 ``` swift
-class MyViewController: SimpleFormViewController {}
+class MyViewController: SimpleFormViewController, SimpleFormViewControllerDelegate {}
 ```
 
 Register form fields in `ViewDidLoad`.
