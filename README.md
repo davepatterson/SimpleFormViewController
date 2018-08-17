@@ -3,6 +3,8 @@ SimpleFormViewController
 
 `SimpleFormViewController` is meant to simplify creating basic forms that are used to submit data.
 
+![image_1](https://user-images.githubusercontent.com/8164764/44276929-a964d680-a20e-11e8-9e9d-3568f400fbe5.jpeg) &nbsp;&nbsp; ![image_2](https://user-images.githubusercontent.com/8164764/44276958-cd281c80-a20e-11e8-94aa-2cb91b928893.jpeg) &nbsp;&nbsp;
+
 ## Installation
 
 ### [CocoaPods](https://cocoapods.org/) (recommended)
