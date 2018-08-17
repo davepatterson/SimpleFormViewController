@@ -13,8 +13,8 @@ SimpleFormViewController
 ```ruby
 # Podfile
 source 'https://github.com/CocoaPods/Specs.git'
-platform :ios, "10.0"
-
+platform :ios, '11.0'
+swift_version = '4.0'
 use_frameworks!
 
 pod 'SimpleFormViewController', :git => 'https://github.com/davepatterson/SimpleFormViewController', :branch => 'master'
